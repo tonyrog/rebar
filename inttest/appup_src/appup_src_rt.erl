@@ -4,7 +4,7 @@
 %%
 %% rebar: Erlang Build Tools
 %%
-%% Copyright (c) 2014 Vlad Dumitrescu
+%% Copyright (c) 2015 Luis Rascao (luis.rascao@gmail.com)
 %%
 %% Permission is hereby granted, free of charge, to any person obtaining a copy
 %% of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@
 %% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 %% THE SOFTWARE.
 %% -------------------------------------------------------------------
--module(app_src_script_rt).
+-module(appup_src_rt).
 
 -compile(export_all).
 
@@ -32,31 +32,26 @@
 
 files() ->
     [{copy, "../../rebar", "rebar"},
-     {create, "src/app_src_script.app.src.script", app_script(app_src_script)}].
+     {copy, "src", "src"}].
 
 run(Dir) ->
     retest_log:log(debug, "Running in Dir: ~s~n", [Dir]),
     {ok, [_Pid|Output]} = retest:sh("./rebar compile -vv",
                                     [{async, false}]),
 
-    Regexp = "DEBUG: Evaluating config script .*/app_src_script\.app\.src\.script.*",
-    ?assertEqual(true, has_line(Output, Regexp)),
-    retest_log:log(debug, "Evaluated .app.src.script~n", []),
+    LineRegexp = "Compiled src/app\.appup\.src",
+    ?assertEqual(true, has_line(Output, LineRegexp)),
 
-    %% check that ebin/app_src.app exists
-    ?assertMatch(true, filelib:is_regular("ebin/app_src_script.app")),
-    retest_log:log(debug, "Generated ebin/.app~n", []),
+    %% check that ebin/app.appup exists
+    ?assertMatch(true, filelib:is_regular("ebin/app.appup")),
+    retest_log:log(debug, "Generated ebin/app.appup~n", []),
 
-    %% check that ebin/.app has vsn="2"
-    {ok, Bin} = file:read_file("ebin/app_src_script.app"),
-    Str = binary_to_list(Bin),
-    ?assertMatch({match, _}, re:run(Str, "{vsn, *\"2\"}")),
-    retest_log:log(debug, "Variable replacement in .app is ok.~n", []),
-
-    %% check that ebin/.app doesn't have foo=ok
-    ?assertMatch(nomatch, re:run(Str, "{foo, *ok}")),
-    retest_log:log(debug, "app.src hasn't 'foo' config.~n", []),
-
+    %% check that ebin/app.appup has expected version
+    {ok, [{AppVersion, [{UpgradeFrom, _}], [{DowngradeTo, _}]}]} =
+        file:consult("ebin/app.appup"),
+    ?assertEqual(AppVersion, "1.2.2"),
+    ?assertEqual(UpgradeFrom, "1.2.1"),
+    ?assertEqual(DowngradeTo, "1.2.1"),
     ok.
 
 has_line([], _RE) ->
@@ -70,14 +65,3 @@ has_line([L|T], RE) ->
         nomatch ->
             has_line(T, RE)
     end.
-
-%%
-%% Generate the contents of a simple .app.src.script file
-%%
-app_script(Name) ->
-    "Vsn=\"2\".\n" ++
-        "{application, " ++ atom_to_list(Name) ++ ",
-           [{vsn, Vsn},
-            {modules, []},
-            {registered, []},
-            {applications, [kernel, stdlib]}]}.\n".
