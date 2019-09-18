@@ -82,7 +82,7 @@ main(Args) ->
 
     %% Finally, update executable perms for our script on *nix,
     %%  or write out script files on win32.
-    case os:type() of
+    case os_type() of
         {unix,_} ->
             [] = os:cmd("chmod u+x rebar"),
             ok;
@@ -100,6 +100,17 @@ main(Args) ->
               "Place this script anywhere in your path\n"
               "and you can use rebar to build OTP-compliant apps.\n").
 
+os_type() ->
+    case os:type() of
+        Type = {unix,_} -> Type;
+        Type = {win32,_} ->
+            case os:cmd("uname -s") of
+                "CYGWIN"++_ -> {unix,cywin};
+                _ -> Type
+            end;
+        Type -> Type
+    end.
+
 usage() ->
   io:format("Usage: bootstrap [OPTION]...~n"),
   io:format("    force=1   unconditional build~n"),
@@ -113,7 +124,7 @@ is_otp(OtpInfo, Regex) ->
 
 rm(Path) ->
     NativePath = filename:nativename(Path),
-    Cmd = case os:type() of
+    Cmd = case os_type() of
               {unix,_} -> "rm -f ";
               {win32,_} -> "del /q "
           end,
