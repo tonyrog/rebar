@@ -107,6 +107,8 @@ os_type() ->
             case os:cmd("uname -s") of
                 "CYGWIN"++_ -> {unix,cywin};
                 "MSYS"++_ -> {unix,msys};
+                "MINGW32"++_ -> {unix,mingw32};
+                "MINGW64"++_ -> {unix,mingw64};
                 _ -> Type
             end;
         Type -> Type
