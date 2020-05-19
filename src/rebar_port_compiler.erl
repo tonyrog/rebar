@@ -567,7 +567,19 @@ erl_interface_dir(Subdir) ->
         Dir -> Dir
     end.
 
+erl_interface() ->
+    Rel = list_to_integer(erlang:system_info(otp_release)),
+    if Rel >= 23 ->
+            {"", "", "", ""};
+       true ->
+            {"-lerl_interface", "erl_interface.lib",
+             " -I\"" ++ erl_interface_dir(include) ++ "\"",
+             "\"" ++ erl_interface_dir(lib) ++ "\""}
+    end.
+        
+
 default_env() ->
+    {EI, EI_Win, EI_Include, EI_Lib} = erl_interface(),
     [
      {"CC" , "cc"},
      {"CXX", "c++"},
@@ -588,11 +600,11 @@ default_env() ->
      {"EXE_CFLAGS" , "-g -Wall -fPIC -MMD $ERL_CFLAGS"},
      {"EXE_LDFLAGS", "$ERL_LDFLAGS"},
 
-     {"ERL_CFLAGS", lists:concat([" -I\"", erl_interface_dir(include),
-                                  "\" -I\"", filename:join(erts_dir(), "include"),
+     {"ERL_CFLAGS", lists:concat([" ", EI_Include,
+                                  " -I\"", filename:join(erts_dir(), "include"),
                                   "\" "])},
-     {"ERL_EI_LIBDIR", lists:concat(["\"", erl_interface_dir(lib), "\""])},
-     {"ERL_LDFLAGS"  , " -L$ERL_EI_LIBDIR -lerl_interface -lei"},
+     {"ERL_EI_LIBDIR", EI_Lib},
+     {"ERL_LDFLAGS"  , " -L$ERL_EI_LIBDIR "++EI++" -lei"},
      {"ERLANG_ARCH"  , rebar_utils:wordsize()},
      {"ERLANG_TARGET", rebar_utils:get_arch()},
 
@@ -639,7 +651,7 @@ default_env() ->
      {"win32", "EXE_LINK_TEMPLATE",
       "$LINKER $PORT_IN_FILES $LDFLAGS $EXE_LDFLAGS /OUT:$PORT_OUT_FILE"},
      %% ERL_CFLAGS are ok as -I even though strictly it should be /I
-     {"win32", "ERL_LDFLAGS", " /LIBPATH:$ERL_EI_LIBDIR erl_interface.lib ei.lib"},
+     {"win32", "ERL_LDFLAGS", " /LIBPATH:$ERL_EI_LIBDIR "++EI_Win++" ei.lib"},
      {"win32", "DRV_CFLAGS", "/Zi /Wall $ERL_CFLAGS"},
      {"win32", "DRV_LDFLAGS", "/DLL $ERL_LDFLAGS"}
     ].
